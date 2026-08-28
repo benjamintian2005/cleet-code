@@ -3,7 +3,7 @@ import { Sandbox } from "@vercel/sandbox";
 import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getProblem } from "@/lib/problems";
+import { getScenario, type Scenario } from "@/lib/scenarios";
 import { MAX_TURNS, computeScore } from "@/lib/grading";
 
 export const maxDuration = 60;
@@ -28,15 +28,18 @@ interface CaseResult {
   reason: string;
 }
 
-function systemPromptFor(functionName: string): string {
+function systemPromptFor(scenario: Scenario): string {
+  const brokenCodeBlock = scenario.brokenCode
+    ? `\n\nHere is the current (buggy) implementation, for reference:\n\`\`\`python\n${scenario.brokenCode}\n\`\`\`\nFix it based on the user's instructions below.`
+    : "";
   return `You are a Python code generation engine embedded in an automated grading pipeline.
-You will receive a coding problem and instructions from a user attempting to solve it,
-possibly across multiple turns of conversation as they refine their instructions.
+You will receive a coding task and instructions from a user attempting to solve it,
+possibly across multiple turns of conversation as they refine their instructions.${brokenCodeBlock}
 
 Respond with ONLY a single fenced Python code block and nothing else — no explanation
 before or after it.
 
-The code block must define a top-level function named exactly \`${functionName}\` that
+The code block must define a top-level function named exactly \`${scenario.functionName}\` that
 implements the solution. Include any necessary imports inside the code block. Do not
 include example usage, print statements, or tests.`;
 }
@@ -108,9 +111,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Max ${MAX_TURNS} turns exceeded.` }, { status: 400 });
   }
 
-  const problem = getProblem(slug);
-  if (!problem) {
-    return NextResponse.json({ error: "Unknown problem." }, { status: 404 });
+  const scenario = getScenario(slug);
+  if (!scenario) {
+    return NextResponse.json({ error: "Unknown scenario." }, { status: 404 });
   }
 
   let rawResponse: string;
@@ -118,7 +121,7 @@ export async function POST(request: Request) {
   try {
     const result = await generateText({
       model: GRADING_MODEL,
-      system: systemPromptFor(problem.functionName),
+      system: systemPromptFor(scenario),
       messages,
       temperature: 0,
       maxOutputTokens: 1024,
@@ -139,7 +142,7 @@ export async function POST(request: Request) {
     totalTokens: usage.totalTokens ?? 0,
   };
 
-  const testArgs = problem.testCases.map((t) => t.args);
+  const testArgs = scenario.testCases.map((t) => t.args);
   const testCasesB64 = Buffer.from(JSON.stringify(testArgs)).toString("base64");
 
   let sandbox: Sandbox | undefined;
@@ -148,7 +151,7 @@ export async function POST(request: Request) {
     sandbox = await Sandbox.create({ timeout: 60_000 });
     await sandbox.writeFiles([
       { path: "solution.py", content: Buffer.from(code) },
-      { path: "runner.py", content: Buffer.from(buildRunnerScript(problem.functionName, testCasesB64)) },
+      { path: "runner.py", content: Buffer.from(buildRunnerScript(scenario.functionName, testCasesB64)) },
     ]);
     const run = await sandbox.runCommand({ cmd: "python3", args: ["runner.py"] });
     const stdout = await run.stdout();
@@ -171,9 +174,9 @@ export async function POST(request: Request) {
   let allResults: CaseResult[];
   if (!Array.isArray(rawResults)) {
     const reason = `Generated code failed to load: ${rawResults.execError}`;
-    allResults = problem.testCases.map((t) => ({ label: t.label, pass: false, reason }));
+    allResults = scenario.testCases.map((t) => ({ label: t.label, pass: false, reason }));
   } else {
-    allResults = problem.testCases.map((testCase, i) => {
+    allResults = scenario.testCases.map((testCase, i) => {
       const r = rawResults[i] as { ok: boolean; value?: unknown; error?: string } | undefined;
       if (!r || !r.ok) {
         return { label: testCase.label, pass: false, reason: r?.error ?? "No result returned." };
@@ -183,8 +186,8 @@ export async function POST(request: Request) {
     });
   }
 
-  const visibleResults = allResults.slice(0, problem.visibleCount);
-  const hiddenResults = allResults.slice(problem.visibleCount);
+  const visibleResults = allResults.slice(0, scenario.visibleCount);
+  const hiddenResults = allResults.slice(scenario.visibleCount);
   const hiddenPassed = hiddenResults.filter((r) => r.pass).length;
 
   const solved = allResults.every((r) => r.pass);
@@ -192,7 +195,7 @@ export async function POST(request: Request) {
   const finalReveal = solved || outOfTurns;
 
   const cumulativeTokens = cumulativeTokensBeforeTurn + turnUsage.totalTokens;
-  const breakdown = computeScore(turnNumber, cumulativeTokens, problem.tokenBudget);
+  const breakdown = computeScore(turnNumber, cumulativeTokens, scenario.tokenBudget);
   const score = solved ? breakdown.score : 0;
 
   return NextResponse.json({
@@ -206,7 +209,7 @@ export async function POST(request: Request) {
     },
     usage: turnUsage,
     cumulativeTokens,
-    tokenBudget: problem.tokenBudget,
+    tokenBudget: scenario.tokenBudget,
     turnNumber,
     maxTurns: MAX_TURNS,
     solved,

@@ -1,4 +1,5 @@
 export const MAX_TURNS = 3;
+export const MAX_QUESTIONS = 5;
 
 /** Score awarded for solving on a given turn number (1-indexed). 0 if never solved. */
 export const SCORE_BY_TURN: Record<number, number> = {

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "cleet-code",
-  description: "LeetCode, but you're optimizing the prompt, not the code.",
+  description: "Vague tickets, hidden requirements — ask questions, then prompt your way to a fix.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

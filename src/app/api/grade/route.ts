@@ -4,7 +4,7 @@ import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProblem } from "@/lib/problems";
-import { MAX_TURNS, SCORE_BY_TURN } from "@/lib/grading";
+import { MAX_TURNS, computeScore } from "@/lib/grading";
 
 export const maxDuration = 60;
 
@@ -18,6 +18,8 @@ const messageSchema = z.object({
 const requestSchema = z.object({
   slug: z.string(),
   messages: z.array(messageSchema).min(1).max(2 * MAX_TURNS - 1),
+  /** Sum of input+output tokens from prior turns of this same attempt. 0 on turn 1. */
+  cumulativeTokensBeforeTurn: z.number().min(0).max(1_000_000).default(0),
 });
 
 interface CaseResult {
@@ -96,7 +98,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const { slug, messages } = parsed.data;
+  const { slug, messages, cumulativeTokensBeforeTurn } = parsed.data;
 
   if (messages[messages.length - 1].role !== "user") {
     return NextResponse.json({ error: "Conversation must end with a user turn." }, { status: 400 });
@@ -188,7 +190,10 @@ export async function POST(request: Request) {
   const solved = allResults.every((r) => r.pass);
   const outOfTurns = !solved && turnNumber >= MAX_TURNS;
   const finalReveal = solved || outOfTurns;
-  const score = solved ? SCORE_BY_TURN[turnNumber] ?? 0 : 0;
+
+  const cumulativeTokens = cumulativeTokensBeforeTurn + turnUsage.totalTokens;
+  const breakdown = computeScore(turnNumber, cumulativeTokens, problem.tokenBudget);
+  const score = solved ? breakdown.score : 0;
 
   return NextResponse.json({
     code,
@@ -200,10 +205,13 @@ export async function POST(request: Request) {
       results: finalReveal ? hiddenResults : undefined,
     },
     usage: turnUsage,
+    cumulativeTokens,
+    tokenBudget: problem.tokenBudget,
     turnNumber,
     maxTurns: MAX_TURNS,
     solved,
     outOfTurns,
     score,
+    scoreBreakdown: solved ? breakdown : undefined,
   });
 }

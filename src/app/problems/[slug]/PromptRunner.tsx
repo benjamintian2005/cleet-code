@@ -15,17 +15,26 @@ interface Usage {
   totalTokens: number;
 }
 
+interface ScoreBreakdown {
+  turnBase: number;
+  tokenPenalty: number;
+  score: number;
+}
+
 interface TurnResult {
   code: string;
   rawResponse: string;
   visibleResults: CaseResult[];
   hidden: { passed: number; total: number; results?: CaseResult[] };
   usage: Usage;
+  cumulativeTokens: number;
+  tokenBudget: number;
   turnNumber: number;
   maxTurns: number;
   solved: boolean;
   outOfTurns: boolean;
   score: number;
+  scoreBreakdown?: ScoreBreakdown;
 }
 
 interface ConversationMessage {
@@ -73,11 +82,12 @@ export function PromptRunner({ slug, initialPrompt }: { slug: string; initialPro
     setRunning(true);
     setError(null);
     const nextConversation: ConversationMessage[] = [...conversation, { role: "user", content: input }];
+    const cumulativeTokensBeforeTurn = lastTurn?.cumulativeTokens ?? 0;
     try {
       const res = await fetch("/api/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, messages: nextConversation }),
+        body: JSON.stringify({ slug, messages: nextConversation, cumulativeTokensBeforeTurn }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -103,7 +113,7 @@ export function PromptRunner({ slug, initialPrompt }: { slug: string; initialPro
               Turn {turn.turnNumber} / {turn.maxTurns}
             </span>
             <span className="font-mono text-xs text-zinc-500">
-              {turn.usage.totalTokens} tokens this turn
+              {turn.usage.totalTokens} tokens this turn · {turn.cumulativeTokens}/{turn.tokenBudget} cumulative
             </span>
           </div>
 
@@ -129,14 +139,22 @@ export function PromptRunner({ slug, initialPrompt }: { slug: string; initialPro
             </p>
           )}
 
-          {turn.solved && (
+          {turn.solved && turn.scoreBreakdown && (
             <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400">
-              <span className="font-semibold">Solved on turn {turn.turnNumber}.</span> Score: {turn.score}/100
+              <div>
+                <span className="font-semibold">Solved on turn {turn.turnNumber}.</span> Score: {turn.score}/100
+              </div>
+              <div className="mt-1 text-sm">
+                {turn.scoreBreakdown.turnBase} for solving on turn {turn.turnNumber}
+                {turn.scoreBreakdown.tokenPenalty > 0 && (
+                  <> − {turn.scoreBreakdown.tokenPenalty} for using {turn.cumulativeTokens} tokens (budget {turn.tokenBudget})</>
+                )}
+              </div>
             </div>
           )}
           {turn.outOfTurns && (
             <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-400">
-              Out of turns — hidden tests revealed above. Score: 0/100
+              Out of turns — hidden tests revealed above. Score: 0/100 ({turn.cumulativeTokens} tokens used total)
             </div>
           )}
         </div>

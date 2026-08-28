@@ -4,14 +4,20 @@ import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getProblem } from "@/lib/problems";
+import { MAX_TURNS, SCORE_BY_TURN } from "@/lib/grading";
 
 export const maxDuration = 60;
 
 const GRADING_MODEL = anthropic("claude-haiku-4-5-20251001");
 
+const messageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(6000),
+});
+
 const requestSchema = z.object({
   slug: z.string(),
-  prompt: z.string().min(1).max(6000),
+  messages: z.array(messageSchema).min(1).max(2 * MAX_TURNS - 1),
 });
 
 interface CaseResult {
@@ -22,7 +28,8 @@ interface CaseResult {
 
 function systemPromptFor(functionName: string): string {
   return `You are a Python code generation engine embedded in an automated grading pipeline.
-You will receive a coding problem and instructions from a user attempting to solve it.
+You will receive a coding problem and instructions from a user attempting to solve it,
+possibly across multiple turns of conversation as they refine their instructions.
 
 Respond with ONLY a single fenced Python code block and nothing else — no explanation
 before or after it.
@@ -89,24 +96,32 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const { slug, prompt } = parsed.data;
+  const { slug, messages } = parsed.data;
+
+  if (messages[messages.length - 1].role !== "user") {
+    return NextResponse.json({ error: "Conversation must end with a user turn." }, { status: 400 });
+  }
+  const turnNumber = messages.filter((m) => m.role === "user").length;
+  if (turnNumber > MAX_TURNS) {
+    return NextResponse.json({ error: `Max ${MAX_TURNS} turns exceeded.` }, { status: 400 });
+  }
 
   const problem = getProblem(slug);
   if (!problem) {
     return NextResponse.json({ error: "Unknown problem." }, { status: 404 });
   }
 
-  let generatedText: string;
+  let rawResponse: string;
   let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
   try {
     const result = await generateText({
       model: GRADING_MODEL,
       system: systemPromptFor(problem.functionName),
-      prompt,
+      messages,
       temperature: 0,
       maxOutputTokens: 1024,
     });
-    generatedText = result.text;
+    rawResponse = result.text;
     usage = result.usage;
   } catch (err) {
     return NextResponse.json(
@@ -115,8 +130,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const code = extractPythonCode(generatedText);
-  const summaryUsage = {
+  const code = extractPythonCode(rawResponse);
+  const turnUsage = {
     inputTokens: usage.inputTokens ?? 0,
     outputTokens: usage.outputTokens ?? 0,
     totalTokens: usage.totalTokens ?? 0,
@@ -151,12 +166,12 @@ export async function POST(request: Request) {
     if (sandbox) await sandbox.stop();
   }
 
-  let results: CaseResult[];
+  let allResults: CaseResult[];
   if (!Array.isArray(rawResults)) {
     const reason = `Generated code failed to load: ${rawResults.execError}`;
-    results = problem.testCases.map((t) => ({ label: t.label, pass: false, reason }));
+    allResults = problem.testCases.map((t) => ({ label: t.label, pass: false, reason }));
   } else {
-    results = problem.testCases.map((testCase, i) => {
+    allResults = problem.testCases.map((testCase, i) => {
       const r = rawResults[i] as { ok: boolean; value?: unknown; error?: string } | undefined;
       if (!r || !r.ok) {
         return { label: testCase.label, pass: false, reason: r?.error ?? "No result returned." };
@@ -166,13 +181,29 @@ export async function POST(request: Request) {
     });
   }
 
-  const passed = results.filter((r) => r.pass).length;
-  const summary = {
-    passed,
-    total: results.length,
-    allPassed: passed === results.length,
-    ...summaryUsage,
-  };
+  const visibleResults = allResults.slice(0, problem.visibleCount);
+  const hiddenResults = allResults.slice(problem.visibleCount);
+  const hiddenPassed = hiddenResults.filter((r) => r.pass).length;
 
-  return NextResponse.json({ code, results, summary });
+  const solved = allResults.every((r) => r.pass);
+  const outOfTurns = !solved && turnNumber >= MAX_TURNS;
+  const finalReveal = solved || outOfTurns;
+  const score = solved ? SCORE_BY_TURN[turnNumber] ?? 0 : 0;
+
+  return NextResponse.json({
+    code,
+    rawResponse,
+    visibleResults,
+    hidden: {
+      passed: hiddenPassed,
+      total: hiddenResults.length,
+      results: finalReveal ? hiddenResults : undefined,
+    },
+    usage: turnUsage,
+    turnNumber,
+    maxTurns: MAX_TURNS,
+    solved,
+    outOfTurns,
+    score,
+  });
 }

@@ -27,9 +27,11 @@ export default async function ProblemPage({
         </span>
 
         <p className="mt-4 text-sm text-zinc-500">
-          Below is the problem, prefilled as your starting prompt. Your job isn&apos;t to
-          write code — it&apos;s to edit this into a prompt that reliably gets a coding
-          model to produce a correct, edge-case-proof solution on the first try.
+          Below is the problem, prefilled as your starting prompt. You get up to 3 turns:
+          submit, see which tests pass, and send a follow-up instruction if you didn&apos;t
+          nail it. Only a couple of example tests show full detail — the rest only tell you
+          how many are passing, so patch the actual ambiguity, not the test suite. Solving in
+          fewer turns scores higher.
         </p>
 
         <PromptRunner slug={problem.slug} initialPrompt={problem.statement} />

@@ -25,6 +25,14 @@ export interface Problem {
    * starting point — the point of the exercise is what they add to it.
    */
   statement: string;
+  /**
+   * The first `visibleCount` entries of testCases get full detail every turn
+   * (input, expected, actual). The rest are graded but only revealed as an
+   * aggregate pass count until the final turn or a full solve — showing exact
+   * hidden inputs on every turn would turn iteration into "guess the test suite"
+   * instead of testing whether the solver generalizes from feedback.
+   */
+  visibleCount: number;
   testCases: TestCase[];
 }
 
@@ -85,6 +93,7 @@ export const PROBLEMS: Problem[] = [
     title: "Two Sum",
     difficulty: "easy",
     functionName: "two_sum",
+    visibleCount: 2,
     statement: `Given an array of integers \`nums\` and an integer \`target\`, return the indices of the
 two numbers that add up to \`target\`.
 
@@ -110,6 +119,7 @@ two_sum([2, 7, 11, 15], 9) -> [0, 1]  # nums[0] + nums[1] == 9`,
     title: "Valid Parentheses",
     difficulty: "easy",
     functionName: "is_valid",
+    visibleCount: 3,
     statement: `Given a string \`s\` containing just the characters '(', ')', '{', '}', '[' and ']',
 determine if the input string is valid.
 
@@ -138,6 +148,7 @@ is_valid("(]") -> False`,
     title: "Merge Intervals",
     difficulty: "medium",
     functionName: "merge",
+    visibleCount: 2,
     statement: `Given an array of intervals where \`intervals[i] = [start_i, end_i]\`, merge all
 overlapping intervals and return the resulting list of non-overlapping intervals
 (in any order).
@@ -169,6 +180,7 @@ merge([[1,3],[2,6],[8,10],[15,18]]) -> [[1,6],[8,10],[15,18]]`,
     title: "Trapping Rain Water",
     difficulty: "hard",
     functionName: "trap",
+    visibleCount: 2,
     statement: `Given \`n\` non-negative integers representing an elevation map where the width of
 each bar is 1, compute how much rainwater it can trap after raining.
 

@@ -16,8 +16,9 @@ export default function Home() {
         </h1>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           LeetCode, but the thing you&apos;re optimizing is the prompt, not the code.
-          Each problem gives you a task and an output contract — write a system
-          prompt that makes the model satisfy it across every hidden test case.
+          Each problem is a real coding problem — write a prompt that gets a coding
+          model to produce a correct solution, first try, edge cases included. Your
+          generated code actually runs against hidden tests.
         </p>
 
         <ul className="mt-10 divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">

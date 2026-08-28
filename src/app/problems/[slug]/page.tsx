@@ -26,17 +26,13 @@ export default async function ProblemPage({
           {problem.difficulty}
         </span>
 
-        <p className="mt-4 whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-          {problem.description}
+        <p className="mt-4 text-sm text-zinc-500">
+          Below is the problem, prefilled as your starting prompt. Your job isn&apos;t to
+          write code — it&apos;s to edit this into a prompt that reliably gets a coding
+          model to produce a correct, edge-case-proof solution on the first try.
         </p>
 
-        <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="font-medium text-zinc-500">Example input</div>
-          <div className="mt-1 font-mono text-zinc-800 dark:text-zinc-200">{problem.example.input}</div>
-          <div className="mt-2 text-zinc-500">{problem.example.note}</div>
-        </div>
-
-        <PromptRunner slug={problem.slug} />
+        <PromptRunner slug={problem.slug} initialPrompt={problem.statement} />
       </main>
     </div>
   );

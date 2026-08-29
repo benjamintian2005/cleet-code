@@ -159,6 +159,108 @@ Ask support any questions you need before fixing it, then submit your fix instru
       },
     ],
   },
+  {
+    slug: "rate-limiter",
+    title: "API Rate Limiter",
+    difficulty: "hard",
+    kind: "clarify",
+    functionName: "is_allowed",
+    briefing: `Add rate limiting to our public API — reject a request if the caller is over
+their quota.
+
+def is_allowed(request_times: list[int], now: int) -> bool:
+    ...
+
+\`request_times\` is the caller's past request timestamps (seconds); \`now\` is the
+current timestamp. Return whether a new request right now should be allowed.
+
+The ticket doesn't spell out the exact limit or window — ask the product team any
+questions you need before implementing, then submit your build instructions.`,
+    hiddenContext: `- The limit is 5 requests per rolling 60-second window — not 5 per calendar minute, and not a fixed reset time.
+- A past request only counts against the limit if its timestamp is strictly greater than (now - 60) and less than or equal to now. A timestamp exactly at (now - 60) has fallen out of the window and does not count.
+- Timestamps greater than \`now\` should be ignored entirely — treat them as client clock skew, not as future usage, and don't count them against the limit.
+- \`request_times\` can arrive in any order; don't assume it's sorted.`,
+    visibleCount: 2,
+    tokenBudget: 1100,
+    testCases: [
+      { args: [[], 1000], label: "no prior requests", check: exactMatch(true) },
+      {
+        args: [[995, 996, 997, 998, 999], 1000],
+        label: "5 requests in last 60s (at the limit)",
+        check: exactMatch(false),
+      },
+      {
+        args: [[995, 996, 997, 998], 1000],
+        label: "4 requests in last 60s (under the limit)",
+        check: exactMatch(true),
+      },
+      {
+        args: [[940, 996, 997, 998, 999], 1000],
+        label: "one request exactly at the 60s boundary (excluded)",
+        check: exactMatch(true),
+      },
+      {
+        args: [[1005, 996, 997, 998, 999], 1000],
+        label: "one future timestamp from clock skew (excluded)",
+        check: exactMatch(true),
+      },
+      {
+        args: [[999, 995, 997, 996, 998], 1000],
+        label: "same 5 requests, unsorted order",
+        check: exactMatch(false),
+      },
+    ],
+  },
+  {
+    slug: "duplicate-order",
+    title: "Duplicate Order Detection",
+    difficulty: "hard",
+    kind: "debug",
+    functionName: "is_duplicate",
+    briefing: `Customers occasionally get charged twice for the same order when they
+double-click "Place order". Here's the current idempotency check — find and fix the
+bug.
+
+Ask support any questions you need before fixing it, then submit your fix instructions.`,
+    brokenCode: `def is_duplicate(order_signature, recent_signatures, now):
+    for sig, ts in recent_signatures:
+        if sig == order_signature:
+            return True
+    return False`,
+    hiddenContext: `- A duplicate should only be flagged if a matching signature was seen within the last 30 seconds — that's the double-click window, not a permanent block. A timestamp exactly 30 seconds ago has fallen out of the window and should NOT count.
+- "order_signature" already encodes the user and cart contents, so an exact string match is correct — no fuzzy matching needed.
+- The actual bug: the current code ignores the timestamp entirely, so re-ordering the exact same items weeks later gets wrongly blocked as a "duplicate" — that's a real, separate complaint support has also been getting, and it's the same root cause.`,
+    visibleCount: 2,
+    tokenBudget: 1200,
+    testCases: [
+      { args: ["sig1", [], 1000], label: "no history", check: exactMatch(false) },
+      {
+        args: ["sig1", [["sig1", 995]], 1000],
+        label: "same signature 5s ago (double-click)",
+        check: exactMatch(true),
+      },
+      {
+        args: ["sig1", [["sig1", 900]], 1000],
+        label: "same signature 100s ago (legitimate reorder)",
+        check: exactMatch(false),
+      },
+      {
+        args: ["sig1", [["sig2", 995]], 1000],
+        label: "different signature, recent",
+        check: exactMatch(false),
+      },
+      {
+        args: ["sig1", [["sig1", 970]], 1000],
+        label: "same signature exactly at the 30s boundary (excluded)",
+        check: exactMatch(false),
+      },
+      {
+        args: ["sig1", [["sig2", 500], ["sig1", 998]], 1000],
+        label: "matching entry among several recent ones",
+        check: exactMatch(true),
+      },
+    ],
+  },
 ];
 
 export function getScenario(slug: string): Scenario | undefined {

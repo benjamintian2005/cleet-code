@@ -2,7 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getScenario, personaPromptFor } from "@/lib/scenarios";
+import { getScenario, personaPromptFor, leakFraction, LEAK_FRACTION_THRESHOLD } from "@/lib/scenarios";
 import { MAX_QUESTIONS } from "@/lib/grading";
 
 export const maxDuration = 30;
@@ -49,8 +49,14 @@ export async function POST(request: Request) {
       maxOutputTokens: 150,
     });
 
+    const fraction = leakFraction(scenario.hiddenContext, result.text);
+    const answer =
+      fraction >= LEAK_FRACTION_THRESHOLD
+        ? "That's a lot to cover at once — ask me about one specific thing and I'll give you a straight answer."
+        : result.text;
+
     return NextResponse.json({
-      answer: result.text,
+      answer,
       usage: {
         inputTokens: result.usage.inputTokens ?? 0,
         outputTokens: result.usage.outputTokens ?? 0,

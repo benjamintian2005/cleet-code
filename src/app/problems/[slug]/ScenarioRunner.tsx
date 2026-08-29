@@ -79,6 +79,10 @@ function buildSeedText(qaMessages: ConversationMessage[]): string {
 export function ScenarioRunner({ slug }: { slug: string }) {
   const [phase, setPhase] = useState<"questions" | "building">("questions");
   const [cumulativeTokens, setCumulativeTokens] = useState(0);
+  // Server-signed running total — the number above is just for display; this opaque
+  // token is what actually carries forward and gets verified server-side, so the
+  // score can't be manipulated by editing cumulativeTokens client-side.
+  const [tokenAcc, setTokenAcc] = useState<string | undefined>(undefined);
 
   const [qaMessages, setQaMessages] = useState<ConversationMessage[]>([]);
   const [qaInput, setQaInput] = useState("");
@@ -104,7 +108,7 @@ export function ScenarioRunner({ slug }: { slug: string }) {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, messages: next }),
+        body: JSON.stringify({ slug, messages: next, cumulativeTokensToken: tokenAcc }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -112,7 +116,8 @@ export function ScenarioRunner({ slug }: { slug: string }) {
       }
       const data = await res.json();
       setQaMessages([...next, { role: "assistant", content: data.answer }]);
-      setCumulativeTokens((t) => t + (data.usage?.totalTokens ?? 0));
+      setCumulativeTokens(data.cumulativeTokens);
+      setTokenAcc(data.cumulativeTokensToken);
       setQaInput("");
     } catch (err) {
       setQaError(err instanceof Error ? err.message : "Something went wrong.");
@@ -131,16 +136,17 @@ export function ScenarioRunner({ slug }: { slug: string }) {
       const res = await fetch("/api/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, messages: nextConversation, cumulativeTokensBeforeTurn: cumulativeTokens }),
+        body: JSON.stringify({ slug, messages: nextConversation, cumulativeTokensToken: tokenAcc }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Request failed with status ${res.status}`);
       }
-      const data: TurnResult = await res.json();
+      const data: TurnResult & { cumulativeTokensToken: string } = await res.json();
       setBuildConversation([...nextConversation, { role: "assistant", content: data.rawResponse }]);
       setBuildTurns([...buildTurns, data]);
       setCumulativeTokens(data.cumulativeTokens);
+      setTokenAcc(data.cumulativeTokensToken);
       setBuildInput("");
     } catch (err) {
       setBuildError(err instanceof Error ? err.message : "Something went wrong.");

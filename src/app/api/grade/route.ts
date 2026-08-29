@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getScenario, type Scenario } from "@/lib/scenarios";
 import { MAX_TURNS, computeScore } from "@/lib/grading";
+import { isRateLimited, clientKey } from "@/lib/rate-limit";
+import { signTokenTotal, verifyTokenTotal } from "@/lib/token-integrity";
 
 export const maxDuration = 60;
 
@@ -18,8 +20,8 @@ const messageSchema = z.object({
 const requestSchema = z.object({
   slug: z.string(),
   messages: z.array(messageSchema).min(1).max(2 * MAX_TURNS - 1),
-  /** Sum of input+output tokens from prior turns of this same attempt. 0 on turn 1. */
-  cumulativeTokensBeforeTurn: z.number().min(0).max(1_000_000).default(0),
+  /** Server-signed running token total from prior turns/questions. Absent on a fresh attempt. */
+  cumulativeTokensToken: z.string().max(200).optional(),
 });
 
 interface CaseResult {
@@ -96,12 +98,17 @@ print(json.dumps(results))
 }
 
 export async function POST(request: Request) {
+  if (isRateLimited(`grade:${clientKey(request)}`, 6)) {
+    return NextResponse.json({ error: "Too many requests — wait a minute and try again." }, { status: 429 });
+  }
+
   const body = await request.json();
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const { slug, messages, cumulativeTokensBeforeTurn } = parsed.data;
+  const { slug, messages, cumulativeTokensToken } = parsed.data;
+  const cumulativeTokensBeforeTurn = verifyTokenTotal(cumulativeTokensToken);
 
   if (messages[messages.length - 1].role !== "user") {
     return NextResponse.json({ error: "Conversation must end with a user turn." }, { status: 400 });
@@ -168,7 +175,11 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   } finally {
-    if (sandbox) await sandbox.stop();
+    // delete (not stop) — stopping leaves the sandbox and its filesystem snapshot
+    // around indefinitely, which silently exhausts the Hobby plan's snapshot
+    // storage quota after enough requests. Each grading run is one-shot and has
+    // no reason to be resumable.
+    if (sandbox) await sandbox.delete({ deleteOrphanSnapshots: true }).catch(() => {});
   }
 
   let allResults: CaseResult[];
@@ -209,6 +220,7 @@ export async function POST(request: Request) {
     },
     usage: turnUsage,
     cumulativeTokens,
+    cumulativeTokensToken: signTokenTotal(cumulativeTokens),
     tokenBudget: scenario.tokenBudget,
     turnNumber,
     maxTurns: MAX_TURNS,

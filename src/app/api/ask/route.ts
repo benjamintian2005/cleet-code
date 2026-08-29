@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getScenario, personaPromptFor, leakFraction, LEAK_FRACTION_THRESHOLD } from "@/lib/scenarios";
 import { MAX_QUESTIONS } from "@/lib/grading";
+import { isRateLimited, clientKey } from "@/lib/rate-limit";
+import { signTokenTotal, verifyTokenTotal } from "@/lib/token-integrity";
 
 export const maxDuration = 30;
 
@@ -17,15 +19,21 @@ const messageSchema = z.object({
 const requestSchema = z.object({
   slug: z.string(),
   messages: z.array(messageSchema).min(1).max(2 * MAX_QUESTIONS - 1),
+  cumulativeTokensToken: z.string().max(200).optional(),
 });
 
 export async function POST(request: Request) {
+  if (isRateLimited(`ask:${clientKey(request)}`, 12)) {
+    return NextResponse.json({ error: "Too many requests — wait a minute and try again." }, { status: 429 });
+  }
+
   const body = await request.json();
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const { slug, messages } = parsed.data;
+  const { slug, messages, cumulativeTokensToken } = parsed.data;
+  const priorTokens = verifyTokenTotal(cumulativeTokensToken);
 
   if (messages[messages.length - 1].role !== "user") {
     return NextResponse.json({ error: "Conversation must end with a user turn." }, { status: 400 });
@@ -55,13 +63,18 @@ export async function POST(request: Request) {
         ? "That's a lot to cover at once — ask me about one specific thing and I'll give you a straight answer."
         : result.text;
 
+    const usage = {
+      inputTokens: result.usage.inputTokens ?? 0,
+      outputTokens: result.usage.outputTokens ?? 0,
+      totalTokens: result.usage.totalTokens ?? 0,
+    };
+    const cumulativeTokens = priorTokens + usage.totalTokens;
+
     return NextResponse.json({
       answer,
-      usage: {
-        inputTokens: result.usage.inputTokens ?? 0,
-        outputTokens: result.usage.outputTokens ?? 0,
-        totalTokens: result.usage.totalTokens ?? 0,
-      },
+      usage,
+      cumulativeTokens,
+      cumulativeTokensToken: signTokenTotal(cumulativeTokens),
       questionNumber,
       maxQuestions: MAX_QUESTIONS,
     });

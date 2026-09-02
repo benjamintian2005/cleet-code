@@ -17,7 +17,7 @@ export default function Home() {
     <div className="flex flex-1 justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="w-full max-w-2xl px-6 py-16">
         <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
-          cleet-code
+          Cleet Code
         </h1>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           Each scenario is a deliberately vague ticket or bug report — the requirements

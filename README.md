@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cleet Code
 
-## Getting Started
+**[cleet-code.vercel.app](https://cleet-code.vercel.app/)**
 
-First, run the development server:
+LeetCode for prompting. Each scenario is a deliberately vague ticket or bug report — the requirements
+that matter aren't in the brief. Ask a stakeholder questions to uncover them,
+then prompt a coding model to build or fix it. Hidden tests cover exactly the
+things nobody asked about.
+
+You get up to 5 questions and then up to 3 build turns per scenario. Only a
+couple of example tests show full detail — the rest only tell you how many
+are passing, so the questions you ask are what actually move your score.
+Solving earlier scores higher (100 / 70 / 40 for turns 1 / 2 / 3), and total
+token usage across the whole attempt can pull the score down from there.
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The `/api/ask` and `/api/grade` routes need an Anthropic API key (via
+`@ai-sdk/anthropic`), `@vercel/sandbox` credentials to execute generated code,
+and a `SCORE_SIGNING_SECRET` to sign the cumulative-token total carried
+between requests.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Commands
 
-## Learn More
+```bash
+npm run dev     # start the dev server
+npm run build   # production build
+npm run start   # run the production build
+npm run lint    # eslint
+```
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `CLAUDE.md` for architecture notes.

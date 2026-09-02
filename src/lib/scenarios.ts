@@ -95,6 +95,66 @@ before implementing, then submit your build instructions.`,
     ],
   },
   {
+    slug: "tip-calculator",
+    title: "Tip Calculator",
+    difficulty: "easy",
+    kind: "clarify",
+    functionName: "calculate_tip",
+    briefing: `Add a function that calculates the tip amount for a restaurant bill.
+
+def calculate_tip(bill_total: float, party_size: int) -> float
+    ...
+
+Return the tip amount itself (not the bill total with tip added, and not a
+per-person split). The ticket doesn't spell out every rule — ask the product
+team any questions you need before implementing, then submit your build
+instructions.`,
+    hiddenContext: `- The standard tip is 18% of the bill total.
+- For parties of 6 or more, a larger gratuity policy kicks in: 20% instead of 18%. That threshold is inclusive — a party of exactly 6 gets 20%.
+- party_size otherwise has no effect below that threshold — don't build any other per-person logic.
+- Round the final result to 2 decimal places.`,
+    visibleCount: 1,
+    tokenBudget: 900,
+    testCases: [
+      { args: [100, 2], label: "bill=100, party=2 (18%)", check: approxMatch(18.0) },
+      { args: [100, 6], label: "bill=100, party=6 (at the large-party threshold)", check: approxMatch(20.0) },
+      { args: [100, 5], label: "bill=100, party=5 (just under threshold)", check: approxMatch(18.0) },
+      { args: [50, 1], label: "bill=50, party=1", check: approxMatch(9.0) },
+      { args: [33.33, 6], label: "bill=33.33, party=6 (rounding)", check: approxMatch(6.67) },
+      { args: [10, 10], label: "bill=10, party=10 (well over threshold)", check: approxMatch(2.0) },
+    ],
+  },
+  {
+    slug: "free-shipping-bug",
+    title: "Free Shipping Threshold",
+    difficulty: "easy",
+    kind: "debug",
+    functionName: "qualifies_for_free_shipping",
+    briefing: `Customers are complaining that carts which should qualify for free
+shipping are being denied it. Here's the current implementation — find and fix
+the bug.
+
+Ask support any questions you need before fixing it, then submit your fix
+instructions.`,
+    brokenCode: `def qualifies_for_free_shipping(cart_total, items_count):
+    return cart_total > 50`,
+    hiddenContext: `- The free shipping threshold is $50, inclusive — a cart totaling exactly $50.00 should qualify. The bug is the strict ">" comparison excluding exactly-$50 carts, which is the actual complaint.
+- items_count is not part of the rule at all — free shipping is based purely on cart_total. Don't add any item-count-based logic.`,
+    visibleCount: 1,
+    tokenBudget: 850,
+    testCases: [
+      { args: [60, 3], label: "cart=60, items=3 (above threshold)", check: exactMatch(true) },
+      { args: [50, 1], label: "cart=50, items=1 (exactly at threshold — the bug)", check: exactMatch(true) },
+      { args: [49.99, 1], label: "cart=49.99, items=1 (just under)", check: exactMatch(false) },
+      {
+        args: [10, 20],
+        label: "cart=10, items=20 (many items, low total — item count shouldn't matter)",
+        check: exactMatch(false),
+      },
+      { args: [0, 0], label: "cart=0, items=0", check: exactMatch(false) },
+    ],
+  },
+  {
     slug: "username-validator",
     title: "Username Validator",
     difficulty: "medium",

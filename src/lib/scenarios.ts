@@ -102,7 +102,7 @@ before implementing, then submit your build instructions.`,
     functionName: "calculate_tip",
     briefing: `Add a function that calculates the tip amount for a restaurant bill.
 
-def calculate_tip(bill_total: float, party_size: int) -> float
+def calculate_tip(bill_total: float, party_size: int) -> float:
     ...
 
 Return the tip amount itself (not the bill total with tip added, and not a
@@ -138,8 +138,8 @@ Ask support any questions you need before fixing it, then submit your fix
 instructions.`,
     brokenCode: `def qualifies_for_free_shipping(cart_total, items_count):
     return cart_total > 50`,
-    hiddenContext: `- The free shipping threshold is $50, inclusive — a cart totaling exactly $50.00 should qualify. The bug is the strict ">" comparison excluding exactly-$50 carts, which is the actual complaint.
-- items_count is not part of the rule at all — free shipping is based purely on cart_total. Don't add any item-count-based logic.`,
+    hiddenContext: `- The free shipping threshold is $50, inclusive — a cart totaling exactly $50.00 should qualify. The bug is that the code uses a strict "greater than" comparison instead of "greater than or equal", which wrongly excludes carts sitting exactly at the threshold — that's the actual complaint.
+- "items_count" is not part of the rule at all — free shipping is based purely on cart_total. Don't add any item-count-based logic.`,
     visibleCount: 1,
     tokenBudget: 850,
     testCases: [

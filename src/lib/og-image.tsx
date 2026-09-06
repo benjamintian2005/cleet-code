@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 };
+export const OG_IMAGE_ALT = "Cleet Code — LeetCode for prompting";
+export const OG_IMAGE_CONTENT_TYPE = "image/png";
 
 const STEPS = ["ask questions", "prompt the model", "hidden tests"];
 

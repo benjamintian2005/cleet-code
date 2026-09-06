@@ -15,14 +15,31 @@ const geistMono = Geist_Mono({
 const title = "Cleet Code — LeetCode for prompting";
 const description = "Vague tickets, hidden requirements — ask questions, then prompt your way to a fix.";
 
-// Vercel injects VERCEL_PROJECT_PRODUCTION_URL at build time; falls back to
+// Vercel injects VERCEL_PROJECT_PRODUCTION_URL (production) and
+// VERCEL_BRANCH_URL/VERCEL_URL (preview) at build time; falls back to
 // localhost for local dev. Needed so the OG/Twitter image files resolve to an
 // absolute URL instead of Next silently defaulting to http://localhost:3000.
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
-  : process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? new URL(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`)
-    : new URL("http://localhost:3000");
+// Each candidate is tried in turn so a malformed env var can't take down
+// every route at import time.
+function resolveSiteUrl(): URL {
+  const candidates = [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+    process.env.VERCEL_BRANCH_URL && `https://${process.env.VERCEL_BRANCH_URL}`,
+    process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      return new URL(candidate);
+    } catch {
+      // malformed — fall through to the next candidate
+    }
+  }
+  return new URL("http://localhost:3000");
+}
+
+const SITE_URL = resolveSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: SITE_URL,

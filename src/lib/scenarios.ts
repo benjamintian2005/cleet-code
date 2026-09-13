@@ -139,9 +139,10 @@ instructions.`,
     brokenCode: `def qualifies_for_free_shipping(cart_total, items_count):
     return cart_total > 50`,
     hiddenContext: `- The free shipping threshold is $50, inclusive: a cart totaling exactly $50.00 should qualify. The bug is that the code uses a strict "greater than" comparison instead of "greater than or equal", which wrongly excludes carts sitting exactly at the threshold, and that's the actual complaint.
-- "items_count" is not part of the rule at all. Free shipping is based purely on cart_total. Don't add any item-count-based logic.`,
+- "items_count" is not part of the rule at all. Free shipping is based purely on cart_total. Don't add any item-count-based logic.
+- There's also an upper cap that isn't part of the reported complaint: carts totaling more than $1000 don't get free shipping either, since those ship through a separate freight process. A cart of exactly $1000.00 still qualifies; anything above that does not.`,
     visibleCount: 1,
-    tokenBudget: 850,
+    tokenBudget: 950,
     testCases: [
       { args: [60, 3], label: "cart=60, items=3 (above threshold)", check: exactMatch(true) },
       { args: [50, 1], label: "cart=50, items=1 (exactly at threshold, the bug)", check: exactMatch(true) },
@@ -152,6 +153,8 @@ instructions.`,
         check: exactMatch(false),
       },
       { args: [0, 0], label: "cart=0, items=0", check: exactMatch(false) },
+      { args: [1000, 1], label: "cart=1000, items=1 (at the upper cap, still free)", check: exactMatch(true) },
+      { args: [1000.01, 1], label: "cart=1000.01, items=1 (just above the upper cap)", check: exactMatch(false) },
     ],
   },
   {
@@ -202,11 +205,12 @@ Ask support any questions you need before fixing it, then submit your fix instru
     end = start + page_size
     return items[start:end]`,
     hiddenContext: `- Pages are 1-indexed from the caller's perspective: page=1 means the first page.
+- One exception: page=0 is still sent by a handful of not-yet-updated client versions, left over from before pagination switched to 1-indexed. Treat page=0 exactly like page=1 (the first page); don't error and don't return an empty page for it.
 - If page is beyond the last available page, return an empty list. Don't error.
 - If page_size is larger than the number of remaining items, just return what's left.
-- page and page_size are always positive integers; no need to validate them.`,
+- Other than the page=0 exception above, page is always a non-negative integer and page_size is always a positive integer; no need to validate them.`,
     visibleCount: 1,
-    tokenBudget: 1100,
+    tokenBudget: 1200,
     testCases: [
       { args: [[1, 2, 3, 4, 5], 1, 2], label: "items=[1..5], page=1, size=2", check: exactMatch([1, 2]) },
       { args: [[1, 2, 3, 4, 5], 2, 2], label: "items=[1..5], page=2, size=2", check: exactMatch([3, 4]) },
@@ -216,6 +220,11 @@ Ask support any questions you need before fixing it, then submit your fix instru
         args: [[1, 2, 3, 4, 5], 1, 10],
         label: "items=[1..5], page=1, size=10 (page_size > remaining)",
         check: exactMatch([1, 2, 3, 4, 5]),
+      },
+      {
+        args: [[1, 2, 3, 4, 5], 0, 2],
+        label: "items=[1..5], page=0 (legacy client, treated as page 1)",
+        check: exactMatch([1, 2]),
       },
     ],
   },

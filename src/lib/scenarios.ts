@@ -382,8 +382,23 @@ function factAppears(fact: string, answerLower: string): boolean {
   return answerLower.includes(fact);
 }
 
+/**
+ * Drops any quoted-phrase fact that is a proper substring of another quoted-phrase
+ * fact, e.g. "greater than" inside "greater than or equal" — otherwise a single
+ * phrase in the answer double-counts as two matched facts and inflates the leaked
+ * fraction. Numeric facts are left alone: they're matched with a word-boundary regex
+ * (not substring `includes`), and digit strings routinely collide as substrings of
+ * unrelated numbers (e.g. "2" inside "20") without one subsuming the other's meaning.
+ */
+function dropSubsumedFacts(facts: string[]): string[] {
+  return facts.filter((f) => {
+    if (/^\d+(\.\d+)?$/.test(f)) return true;
+    return !facts.some((other) => other !== f && other.includes(f));
+  });
+}
+
 export function leakFraction(hiddenContext: string, answer: string): number {
-  const hiddenFacts = [...new Set(extractFacts(hiddenContext))];
+  const hiddenFacts = dropSubsumedFacts([...new Set(extractFacts(hiddenContext))]);
   if (hiddenFacts.length < 3) return 0;
   const answerLower = answer.toLowerCase();
   const matched = hiddenFacts.filter((f) => factAppears(f, answerLower));

@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const title = "Cleet Code — LeetCode for prompting";
-const description = "Vague tickets, hidden requirements — ask questions, then prompt your way to a fix.";
+const title = "Cleet Code: LeetCode for prompting";
+const description = "Vague tickets, hidden requirements. Ask questions, then prompt your way to a fix.";
 
 // Vercel injects VERCEL_PROJECT_PRODUCTION_URL in every environment (production,
 // preview, and development alike), so it must be skipped on non-production
@@ -41,7 +41,7 @@ function resolveSiteUrl(): URL {
       const url = new URL(candidate);
       if (url.protocol === "http:" || url.protocol === "https:") return url;
     } catch {
-      // malformed — fall through to the next candidate
+      // malformed, fall through to the next candidate
     }
   }
   return new URL("http://localhost:3000");

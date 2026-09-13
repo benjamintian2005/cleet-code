@@ -38,7 +38,7 @@ function systemPromptFor(scenario: Scenario): string {
 You will receive a coding task and instructions from a user attempting to solve it,
 possibly across multiple turns of conversation as they refine their instructions.${brokenCodeBlock}
 
-Respond with ONLY a single fenced Python code block and nothing else — no explanation
+Respond with ONLY a single fenced Python code block and nothing else. No explanation
 before or after it.
 
 The code block must define a top-level function named exactly \`${scenario.functionName}\` that
@@ -99,7 +99,7 @@ print(json.dumps(results))
 
 export async function POST(request: Request) {
   if (isRateLimited(`grade:${clientKey(request)}`, 6)) {
-    return NextResponse.json({ error: "Too many requests — wait a minute and try again." }, { status: 429 });
+    return NextResponse.json({ error: "Too many requests, wait a minute and try again." }, { status: 429 });
   }
 
   const body = await request.json();
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   } finally {
-    // delete (not stop) — stopping leaves the sandbox and its filesystem snapshot
+    // delete (not stop): stopping leaves the sandbox and its filesystem snapshot
     // around indefinitely, which silently exhausts the Hobby plan's snapshot
     // storage quota after enough requests. Each grading run is one-shot and has
     // no reason to be resumable.

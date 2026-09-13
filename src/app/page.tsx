@@ -20,7 +20,7 @@ export default function Home() {
           Cleet Code
         </h1>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-          Each scenario is a deliberately vague ticket or bug report — the requirements
+          Each scenario is a deliberately vague ticket or bug report: the requirements
           that matter aren&apos;t in the brief. Ask a stakeholder questions to uncover
           them, then prompt a coding model to build or fix it. Hidden tests cover
           exactly the things nobody asked about.

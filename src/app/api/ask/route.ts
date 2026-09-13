@@ -24,7 +24,7 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   if (isRateLimited(`ask:${clientKey(request)}`, 12)) {
-    return NextResponse.json({ error: "Too many requests — wait a minute and try again." }, { status: 429 });
+    return NextResponse.json({ error: "Too many requests, wait a minute and try again." }, { status: 429 });
   }
 
   const body = await request.json();
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const fraction = leakFraction(scenario.hiddenContext, result.text);
     const answer =
       fraction >= LEAK_FRACTION_THRESHOLD
-        ? "That's a lot to cover at once — ask me about one specific thing and I'll give you a straight answer."
+        ? "That's a lot to cover at once. Ask me about one specific thing and I'll give you a straight answer."
         : result.text;
 
     const usage = {

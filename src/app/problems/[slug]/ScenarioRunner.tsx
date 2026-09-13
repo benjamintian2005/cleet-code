@@ -79,7 +79,7 @@ function buildSeedText(qaMessages: ConversationMessage[]): string {
 export function ScenarioRunner({ slug }: { slug: string }) {
   const [phase, setPhase] = useState<"questions" | "building">("questions");
   const [cumulativeTokens, setCumulativeTokens] = useState(0);
-  // Server-signed running total — the number above is just for display; this opaque
+  // Server-signed running total: the number above is just for display; this opaque
   // token is what actually carries forward and gets verified server-side, so the
   // score can't be manipulated by editing cumulativeTokens client-side.
   const [tokenAcc, setTokenAcc] = useState<string | undefined>(undefined);
@@ -202,7 +202,7 @@ export function ScenarioRunner({ slug }: { slug: string }) {
           onClick={() => setPhase("building")}
           className="mt-4 block rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium text-black dark:border-zinc-700 dark:text-zinc-50"
         >
-          {questionsAsked === 0 ? "Skip questions, start building" : `Done asking — start building (${questionsAsked} asked)`}
+          {questionsAsked === 0 ? "Skip questions, start building" : `Done asking, start building (${questionsAsked} asked)`}
         </button>
       </div>
     );
@@ -255,7 +255,7 @@ export function ScenarioRunner({ slug }: { slug: string }) {
             <ResultList results={turn.hidden.results} />
           ) : (
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {turn.hidden.passed}/{turn.hidden.total} passing — details hidden until you solve it or run out of turns.
+              {turn.hidden.passed}/{turn.hidden.total} passing; details hidden until you solve it or run out of turns.
             </p>
           )}
 
@@ -274,7 +274,7 @@ export function ScenarioRunner({ slug }: { slug: string }) {
           )}
           {turn.outOfTurns && (
             <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-400">
-              Out of turns — hidden tests revealed above. Score: 0/100 ({turn.cumulativeTokens} tokens used total)
+              Out of turns, hidden tests revealed above. Score: 0/100 ({turn.cumulativeTokens} tokens used total)
             </div>
           )}
         </div>
@@ -287,7 +287,7 @@ export function ScenarioRunner({ slug }: { slug: string }) {
           </label>
           {buildTurns.length === 0 && qaMessages.length > 0 && (
             <p className="mt-1 text-xs text-zinc-500">
-              Your clarifications above are included automatically — just write what you want built.
+              Your clarifications above are included automatically, just write what you want built.
             </p>
           )}
           <textarea

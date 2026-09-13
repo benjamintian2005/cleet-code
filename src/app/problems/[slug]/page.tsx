@@ -39,7 +39,7 @@ export default async function ScenarioPage({
 
         <p className="mt-4 text-sm text-zinc-500">
           You get up to 5 questions and then up to 3 build turns. Only a couple of
-          example tests show full detail — the rest only tell you how many are
+          example tests show full detail; the rest only tell you how many are
           passing, so the questions you ask are what actually move your score.
         </p>
 

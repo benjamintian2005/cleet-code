@@ -2,7 +2,7 @@
  * Best-effort, per-instance rate limiting. State lives in module scope, so it
  * persists across invocations on the same warm serverless instance but resets on
  * cold starts and isn't shared across concurrent instances/regions. That's a real
- * limitation, not a mistake — a proper fix (Upstash/Vercel KV-backed limiter) needs
+ * limitation, not a mistake. A proper fix (Upstash/Vercel KV-backed limiter) needs
  * provisioning a new resource, which wasn't done unilaterally. This is meant to stop
  * casual scripted abuse of a public endpoint backed by a real API key, not to be a
  * airtight distributed rate limiter.
